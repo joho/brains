@@ -1,3 +1,5 @@
+require 'ostruct'
+
 class Robot < OpenStruct
   @@past_states = []
   def self.store_state(robot)
@@ -17,28 +19,52 @@ class Robot < OpenStruct
   end
   
   def next_action
-    if taking_damage?
-      return :move!, rand(1), rand(1)
-    elsif not facing_nearest_enemy?
-      return :turn, zombie.direction_from_me(me)
-    elsif me.energy > 40
-      return :shoot!
+    if enough_energy?
+      do_something! 
     else
-      return :rest!
+      :rest!
     end
   end
   
   def taking_damage?
-    my_last_state && my_last_state.health > me.health
+    my_last_state && my_last_state.health > health
   end
   
   def nearest_zombie
-    zombies.sort_by do |zombie|
-      zombie.distance_from_me(me)
+    visible_zombies.sort_by do |zombie|
+      zombie.distance_from_me(self)
     end.last
   end
   
   def facing_nearest_enemy?
-    me.dir == nearest_zombie.direction_from_me(me)
+    dir.near? nearest_zombie.direction_from_me(self), 5
+  end
+  
+  def enough_energy?
+    energy > 50
+  end
+  
+  def do_something!
+    if taking_damage?
+      return :move!, rand(1), rand(1)
+    elsif nearest_zombie && facing_nearest_enemy?
+      return :shoot!
+    elsif nearest_zombie
+      return :turn!, nearest_zombie.direction_from_me(self)
+    else
+      return :turn!, (dir.to_deg + 60).to_rad
+    end
+  end
+end
+
+class Numeric
+  def to_deg
+    self * (180 / Math::PI)
+  end
+  def to_rad
+    self * (Math::PI / 180)
+  end
+  def near?(other, precision=1)
+    (other - precision) <= self && self <= (other + precision)
   end
 end

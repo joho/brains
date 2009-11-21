@@ -1,3 +1,5 @@
+require 'ostruct'
+
 class Zombie < OpenStruct
   def self.new_from_env(visible_objects)
     visible_objects.select do |object|
