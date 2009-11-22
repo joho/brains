@@ -1,6 +1,7 @@
 require 'ostruct'
 
 class Robot < OpenStruct
+  
   @@past_states = []
   def self.store_state(robot)
     @@past_states << robot
@@ -10,51 +11,76 @@ class Robot < OpenStruct
     @@past_states
   end
   
+  attr_reader :targeted_zombie, :was_resting
+  
   def visible_zombies
-    Zombie.new_from_env(visible)
+    @visible_zombies ||= Zombie.new_from_env(visible)
   end
   
   def my_last_state
-    Robot.past_states.last
-  end
-  
-  def next_action
-    if enough_energy?
-      do_something! 
-    else
-      :rest!
-    end
+    @@past_states.last
   end
   
   def taking_damage?
-    my_last_state && my_last_state.health > health
+    my_last_state.health > health
+  end
+  
+  def last_targeted_zombie
+    my_last_state.targeted_zombie
   end
   
   def nearest_zombie
     visible_zombies.sort_by do |zombie|
       zombie.distance_from_me(self)
-    end.last
+    end.first
   end
   
-  def facing_nearest_enemy?
-    dir.near? nearest_zombie.direction_from_me(self), 5
+  def need_rest?
+    energy < 150
   end
   
-  def enough_energy?
-    energy > 50
+  def need_to_continue_rest?
+    my_last_state.was_resting && energy < 300
   end
   
-  def do_something!
-    if taking_damage?
-      return :move!, rand(1), rand(1)
-    elsif nearest_zombie && facing_nearest_enemy?
+  def next_action
+    if !my_last_state
+      # first turn
+      return :rest!
+    elsif need_to_start_rest? || need_to_continue_rest?
+      @was_resting = true
+      return :rest!
+    elsif taking_damage?
+      puts "!!RUNNING!!"
+      return :move!, 1, 1
+    elsif last_targeted_zombie
+      puts "!!SHOOTING!!"
       return :shoot!
     elsif nearest_zombie
+      puts "!!TARGETING!!"
+      @targeted_zombie = nearest_zombie
       return :turn!, nearest_zombie.direction_from_me(self)
     else
-      return :turn!, (dir.to_deg + 60).to_rad
+      puts "!!SCANNING!!"
+      if nothing_nearby?
+        return :rest!
+      else
+        return :turn!, dir + 60
+      end
     end
   end
+  
+  def nothing_nearby?
+    Robot.past_states[-3] && Robot.past_states[-3].nearest_zombie == nil
+  end
+  
+  
+  def inspect
+    <<-INSP
+#<Robot health="#{health}" energy="#{energy}" dir="#{dir}" x="#{x}" y="#{y}" state="#{state}">
+    INSP
+  end
+  
 end
 
 class Numeric
