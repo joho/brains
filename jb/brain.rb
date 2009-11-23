@@ -5,9 +5,17 @@ require 'brains/helpers'
 require 'zombie'
 require 'utils'
 
-brain :name => "JB"
+def register(name)
+  tr = DNSSD::TextRecord.new
+  tr["name"] = name
+  DNSSD.register("#{name}'s brain", "_http._tcp,_brains", nil, 4567, tr)
+end
+
+register('JB')
+
 
 post '/' do 
+  #pass unless request.env['REMOTE_ADDR'] == "10.10.11.197"
   
   me = Robot.new(env)
   puts "\n\n\n--------------------------------------------------"

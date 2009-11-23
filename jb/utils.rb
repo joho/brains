@@ -13,6 +13,10 @@ class Robot < OpenStruct
   
   attr_reader :targeted_zombie, :was_resting
   
+  def ran?
+    @ran
+  end
+  
   def visible_zombies
     @visible_zombies ||= Zombie.new_from_env(visible)
   end
@@ -35,12 +39,12 @@ class Robot < OpenStruct
     end.first
   end
   
-  def need_rest?
-    energy < 150
+  def need_to_start_rest?
+    energy <= 1
   end
   
   def need_to_continue_rest?
-    my_last_state.was_resting && energy < 300
+    my_last_state.was_resting && energy < 6
   end
   
   def next_action
@@ -48,10 +52,12 @@ class Robot < OpenStruct
       # first turn
       return :rest!
     elsif need_to_start_rest? || need_to_continue_rest?
+      puts "!!RESTING!!"
       @was_resting = true
       return :rest!
-    elsif taking_damage?
+    elsif ran_two_turns_ago?
       puts "!!RUNNING!!"
+      @ran = true
       return :move!, 1, 1
     elsif last_targeted_zombie
       puts "!!SHOOTING!!"
@@ -74,10 +80,13 @@ class Robot < OpenStruct
     Robot.past_states[-3] && Robot.past_states[-3].nearest_zombie == nil
   end
   
+  def ran_two_turns_ago?
+    Robot.past_states[-2] && Robot.past_states[-2].ran?
+  end
   
   def inspect
     <<-INSP
-#<Robot health="#{health}" energy="#{energy}" dir="#{dir}" x="#{x}" y="#{y}" state="#{state}">
+#<Robot health="#{health}" energy="#{energy}" score="#{score}" dir="#{dir}" x="#{x}" y="#{y}" state="#{state}">
     INSP
   end
   
